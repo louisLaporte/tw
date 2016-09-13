@@ -7,7 +7,7 @@ import yaml
 import json
 # -*- coding: latin-1 -*-
 
-with open("../secret/key_secret.json") as json_file:
+with open("../../secret/key_secret.json") as json_file:
     data = json.load(json_file)
 
 access_token_key    = data["ACCESS_TOKEN_KEY"   ] 
