@@ -19,17 +19,10 @@ auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token_key, access_token_secret)
  
 api = tweepy.API(auth)
- 
-#api.update_status(status='This is a tweet sent automatically by a Python script!')
-
-
-
-
-      
-
 
 from string import punctuation
 import time
+import operator                             #Importing operator module
 import re
 from collections import Counter
 
@@ -60,10 +53,7 @@ class Tw(object):
             ]
 
     def __init__(self,name,count = 1):
-        
-        #self.a = Tw.available_info
         self.u = api.get_user(screen_name=name)
-        
         self.d = {}
         self.d["name"]              = self.u.name
         self.d["user_id"]           = self.u.id
@@ -138,32 +128,32 @@ class Tw(object):
         return l
 
     def statistic(self,text):
+        text = text.split()
         for s in list(text):
             if re.match('@.*',s):
                 text.remove(s)
             elif  re.match('http.*',s):
                 text.remove(s)
             elif re.match('&.*', s):
-                #print("+++++++++++" + s)
-                #print(self.d["tweet"]["content"]["text"])
                 text.remove(s)
             elif  s == 'cc':
-                #print("+++++++++++" + s)
-                #print(self.d["tweet"]["content"]["text"])
                 text.remove(s)
 
         text_norm = [''.join(c for c in s if c not in string.punctuation) for s in text]
         #remove blank in array
         text_norm = [s for s in text_norm if s]
-        tw_norm = [x.lower() for x in text_norm]
-        return text_norm
+        text_norm = [x.lower() for x in text_norm]
 
+        counts = Counter()
 
+        for words in text_norm:
+            for letters in set(words):
+                if not re.match("\W+",letters):
+                    counts[letters]+=1
 
-
-
-
-
+        counts = sorted(counts.items(),key = operator.itemgetter(1),reverse = True)
+        return counts
+                
     def search(self):
         for tweet in tweepy.Cursor(api.search,
                                q="#IS",
@@ -188,48 +178,18 @@ class Tw(object):
                 a_list.append(s)
             elif re.match('http.*', s):
                 u_list.append(s)
-        
         return (h_list, a_list, u_list)
-#
-#            for words in tw_norm_tolower:
-#                  for letters in set(words):
-#                      counts[letters]+=1
-#
-#        import operator                             #Importing operator module
-#
-#        counts = sorted(counts.items(),key = operator.itemgetter(1),reverse = True)
-#        tot = 0
-#        for key,value in counts:
-#            if not re.match('\W+',key):
-#                tot += value 
-#
-#        for key,value in counts:
-#            if not re.match('\W+',key):
-#                print("{:<10}{:.2f}%".format(key,100*value/tot))
 
 
-
-class Punctuation:
-    #def __init__(self, sentence):
-    #    self.s = str(sentence)
-
-    def rm_all_punct(self, sentence):
-        translator = str.maketrans({key: None for key in (string.punctuation)})
-        s = sentence.translate(translator)
-        return s
-    #
-    #def rm_punct(sentence):
-    #    pass
 if __name__ == '__main__':
 
-    #companies = [ "Total", "Chevron", "Shell", "BP_America","exxonmobil" ]
-    companies = [ "Total" ]
+    companies = [ "Total", "Chevron", "Shell", "BP_America","exxonmobil" ]
+   # companies = [ "Total" ]
     nb_last_tw = 30
     for company in companies:
         c = Tw(name=company)
         #c.print_info_account(query="description")
-        d = c.get_info_tweet(count = 1, query=["id","created_at","stat"])
+        d = c.get_info_tweet(count = 2, query=["created_at","stat"])
         print(d)
-
 
         print("---------------")
