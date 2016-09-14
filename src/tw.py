@@ -24,28 +24,6 @@ api = tweepy.API(auth)
 
 
 
-def unique_words(sentence):
-    return set(sentence.translate(None, punctuation).lower().split())
-
-def getUniqueWords(allWords) :
-    uniqueWords = [] 
-    for i in allWords.split():
-        if not i in uniqueWords:
-            uniqueWords.append(i)
-    return uniqueWords
-
-
-class Punctuation:
-    #def __init__(self, sentence):
-    #    self.s = str(sentence)
-
-    def rm_all_punct(self, sentence):
-        translator = str.maketrans({key: None for key in (string.punctuation)})
-        s = sentence.translate(translator)
-        return s
-    #
-    #def rm_punct(sentence):
-    #    pass
 
       
 
@@ -57,20 +35,21 @@ from collections import Counter
 
 class Tw(object):
 
-    available_info = [
-            "name",
-            "user_id",
-            "description",
-            "lang",
-            "created_at", 
-            "location",
-            "time_zone",
-            "number_tweets",
-            "number_followers", 
-            "following",
+    account_info = [
+            "name"            ,
+            "user_id"         ,
+            "description"     ,
+            "lang"            ,
+            "created_at"      ,
+            "location"        ,
+            "time_zone"       ,
+            "number_tweets"   ,
+            "number_followers",
+            "following"       ,
             "member_of"
-             ]
-    available_tweet_info = [
+            ]
+
+    tweet_info = [
             "id_str",
             "retweet_count",
             "favorite_count",
@@ -82,12 +61,12 @@ class Tw(object):
 
     def __init__(self,name,count = 1):
         
-        self.a = Tw.available_info
+        #self.a = Tw.available_info
         self.u = api.get_user(screen_name=name)
         
         self.d = {}
         self.d["name"]              = self.u.name
-        self.d["user_id"]           = self.u.id_str
+        self.d["user_id"]           = self.u.id
         self.d["description"]       = self.u.description
         self.d["lang"]              = self.u.lang
         self.d["created_at"]        = self.u.created_at
@@ -106,14 +85,14 @@ class Tw(object):
         info for twitter account
         """
         if query is None or not isinstance(query, str):
-            for a in self.a:
+            for a in Tw.account_info:
                 print("{:<20}: {}".format(a,self.d[a]))
-        elif query in self.a:
+        elif query in Tw.account_info:
             print("{:<20}: {}".format(query,self.d[query]))
         else:
             print("Cannot print info: query = " + query)
             print("list of queries:")
-            for a in self.a:
+            for a in Tw.account_info:
                 print("\t- " + a)
 
 
@@ -121,23 +100,23 @@ class Tw(object):
         """
         info for twitter account
         """
-        if query in self.a:
+        if query in Tw.account_info:
             return self.d[query]
         else:
             print("Cannot print info: query = " + query)
             print("list of queries:")
-            for i in self.a:
+            for i in Tw.account_info:
                 print("\t- " + i)
 
 
-    def __tweet(self, count = 1):
+    def get_info_tweet(self, count = 1, query = None):
         """
         private 
         """
-        statuses = api.user_timeline(id = self.u.id, count = count)
+        l = []
+        for status in  tweepy.Cursor( api.user_timeline, id=self.u.id ).items(count):
         
-        for status in statuses:
-
+            d = {}
             self.d["tweet"]["id"]               = status.id_str
             self.d["tweet"]["retweet_count"]    = status.retweet_count
             self.d["tweet"]["favorite_count"]   = status.favorite_count
@@ -146,94 +125,71 @@ class Tw(object):
             self.d["tweet"]["source"]           = status.source
             self.d["tweet"]["coordinates"]      = status.coordinates
 
-            self.d["tweet"]["content"]          = {}
-            self.d["tweet"]["content"]["text"]  = status.text
+            self.d["tweet"]["text"] = status.text
+            (self.d["tweet"]["hashtag"],
+            self.d["tweet"]["at"],
+            self.d["tweet"]["url"]) = self.meta(status.text)
+            self.d["tweet"]["stat"] = self.statistic(status.text)
 
-        return self.d["tweet"]
+            for q in query:
+                val  = [value for key, value in self.d["tweet"].items() if q in key ]
+                d[q] = val
+            l.append(d)
+        return l
+
+    def statistic(self,text):
+        for s in list(text):
+            if re.match('@.*',s):
+                text.remove(s)
+            elif  re.match('http.*',s):
+                text.remove(s)
+            elif re.match('&.*', s):
+                #print("+++++++++++" + s)
+                #print(self.d["tweet"]["content"]["text"])
+                text.remove(s)
+            elif  s == 'cc':
+                #print("+++++++++++" + s)
+                #print(self.d["tweet"]["content"]["text"])
+                text.remove(s)
+
+        text_norm = [''.join(c for c in s if c not in string.punctuation) for s in text]
+        #remove blank in array
+        text_norm = [s for s in text_norm if s]
+        tw_norm = [x.lower() for x in text_norm]
+        return text_norm
 
 
-    def print_info_tweet(self,query = None, count = 1):
+
+
+
+
+
+    def search(self):
+        for tweet in tweepy.Cursor(api.search,
+                               q="#IS",
+                               count=100,
+                               result_type="recent",
+                               include_entities=True,
+                               lang="en").items():
+            print(tweet.text)
+
+
+#
+    def meta(self, sentence):
+        """
+        extracting list of hashtag, at and url
+        """
+        h_list, a_list, u_list = [], [], []
+         
+        for s in list(sentence):
+            if re.match('#.*', s):
+                h_list.append(s)
+            elif re.match('@.*', s):
+                a_list.append(s)
+            elif re.match('http.*', s):
+                u_list.append(s)
         
-        p = self.__tweet(count = count)
-        print(p["id"])
-
-
-#
-#    def extract(self, sentence):
-#        """
-#        extracting list of hashtag, at and url
-#        """
-#        h_list, a_list, u_list = [], [], []
-#         
-#        for s in list(sentence):
-#            if re.match('#.*', s):
-#                h_list.append(s)
-#            elif re.match('@.*', s):
-#                a_list.append(s)
-#            elif re.match('http.*', s):
-#                u_list.append(s)
-#        
-#        return (h_list, a_list, u_list)
-#
-#    def normalize(self, sentence):
-#        #TODO use beautifulsoup to convert html special char
-#        #http://stackoverflow.com/questions/2087370/decode-html-entities-in-python-string
-#        """
-#        - remove url and @
-#        - remove punctuation
-#        """
-#        for s in list(sentence):
-#            if re.match('@.*',s):
-#                sentence.remove(s)
-#            elif  re.match('http.*',s):
-#                sentence.remove(s)
-#            elif re.match('&.*', s):
-#                #print("+++++++++++" + s)
-#                #print(self.d["tweet"]["content"]["text"])
-#                sentence.remove(s)
-#            elif  s == 'cc':
-#                #print("+++++++++++" + s)
-#                #print(self.d["tweet"]["content"]["text"])
-#                sentence.remove(s)
-#
-#        sentence_norm = [''.join(c for c in s if c not in string.punctuation) for s in sentence]
-#        #remove blank in array
-#        sentence_norm = [s for s in sentence_norm if s]
-#        return sentence_norm
-#
-#    def run(self):
-#        statuses = api.user_timeline(id = self.u.id, count = self.c)
-#        status_list = []
-#        
-#        counts = Counter()
-#        for status in statuses:
-#            self.d["tweet"]["id"] = status.id_str
-#            self.d["tweet"]["retweet_count"] = status.retweet_count
-#            self.d["tweet"]["favorite_count"] = status.favorite_count
-#            self.d["tweet"]["created_at"] = status.created_at
-#            self.d["tweet"]["place"] = status.place
-#            self.d["tweet"]["source"] = status.source
-#            self.d["tweet"]["coordinates"] = status.coordinates
-#            self.d["tweet"]["content"] = {}
-#            self.d["tweet"]["content"]["text"] = status.text
-#
-#            #print(status.created_at)
-#            #print(status.text)
-#
-#            tw = status.text 
-#            tw_list = str(status.text).split()  
-#            self.extract(tw)
-#            (self.d["tweet"]["content"]["hashtag"],
-#            self.d["tweet"]["content"]["at"], 
-#            self.d["tweet"]["content"]["url"]) = self.extract(tw_list)
-#
-#            #print(self.d["tweet"]["content"]["hashtag"])
-#            #print(self.d["tweet"]["content"]["at"])
-#            #print(self.d["tweet"]["content"]["url"] )
-#
-#            tw_norm = self.normalize(tw_list)
-#            tw_norm_tolower = [x.lower() for x in tw_norm]
-#            #print(tw_norm_tolower)
+        return (h_list, a_list, u_list)
 #
 #            for words in tw_norm_tolower:
 #                  for letters in set(words):
@@ -251,16 +207,29 @@ class Tw(object):
 #            if not re.match('\W+',key):
 #                print("{:<10}{:.2f}%".format(key,100*value/tot))
 
+
+
+class Punctuation:
+    #def __init__(self, sentence):
+    #    self.s = str(sentence)
+
+    def rm_all_punct(self, sentence):
+        translator = str.maketrans({key: None for key in (string.punctuation)})
+        s = sentence.translate(translator)
+        return s
+    #
+    #def rm_punct(sentence):
+    #    pass
 if __name__ == '__main__':
 
     #companies = [ "Total", "Chevron", "Shell", "BP_America","exxonmobil" ]
     companies = [ "Total" ]
     nb_last_tw = 30
     for company in companies:
-        print(company)
         c = Tw(name=company)
-        c.print_info_account(query="sda")
-        c.print_info_tweet(count = 30)
+        #c.print_info_account(query="description")
+        d = c.get_info_tweet(count = 1, query=["id","created_at","stat"])
+        print(d)
 
 
         print("---------------")
