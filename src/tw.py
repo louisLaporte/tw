@@ -2,9 +2,14 @@
 
 #from __future__ import unicode_literals
 import tweepy
-import string
-import yaml
 import json
+import string
+from string import punctuation
+from collections import Counter
+
+import time
+import operator
+import re
 # -*- coding: latin-1 -*-
 
 with open("../../secret/key_secret.json") as json_file:
@@ -14,19 +19,26 @@ access_token_key    = data["ACCESS_TOKEN_KEY"   ]
 access_token_secret = data["ACCESS_TOKEN_SECRET"]
 consumer_key        = data["CONSUMER_KEY"       ]
 consumer_secret     = data["CONSUMER_SECRET"    ]
-
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token_key, access_token_secret)
- 
 api = tweepy.API(auth)
 
-from string import punctuation
-import time
-import operator                             #Importing operator module
-import re
-from collections import Counter
 
 class Tw(object):
+    """
+    This class provides info for a twitter account. 
+    Furthermore it provides tweet statistics.
+
+    Example for an account:
+
+    >>>t = Tw(name="twitter")
+    >>>t.get_info_account(query = ["name","description"])
+
+    Example for tweets:
+    >>>t = Tw(name="twitter")
+    >>>t.get_info_tweet(query=["stat","hashtag"], count = 10)
+
+    """
 
     account_info = [
             "name"            ,
@@ -52,7 +64,7 @@ class Tw(object):
             "coordinates"
             ]
 
-    def __init__(self,name,count = 1):
+    def __init__(self,name):
         self.u = api.get_user(screen_name=name)
         self.d = {}
         self.d["name"]              = self.u.name
@@ -69,26 +81,11 @@ class Tw(object):
 
         self.d["tweet"] = {}
 
-    
-    def print_info_account(self,query=None):
-        """
-        info for twitter account
-        """
-        if query is None or not isinstance(query, str):
-            for a in Tw.account_info:
-                print("{:<20}: {}".format(a,self.d[a]))
-        elif query in Tw.account_info:
-            print("{:<20}: {}".format(query,self.d[query]))
-        else:
-            print("Cannot print info: query = " + query)
-            print("list of queries:")
-            for a in Tw.account_info:
-                print("\t- " + a)
-
-
     def get_info_account(self, query = None):
-        """
-        info for twitter account
+        """ Return account info
+        
+        Keyword arguments:
+           query -- info to retrieve
         """
         if query in Tw.account_info:
             return self.d[query]
@@ -97,11 +94,14 @@ class Tw(object):
             print("list of queries:")
             for i in Tw.account_info:
                 print("\t- " + i)
-
+            return None
 
     def get_info_tweet(self, count = 1, query = None):
-        """
-        private 
+        """ Return info from tweet
+        
+        Keyword arguments:
+           count -- number of last tweet to retrieve
+           query -- info to retrieve
         """
         l = []
         for status in  tweepy.Cursor( api.user_timeline, id=self.u.id ).items(count):
@@ -122,12 +122,19 @@ class Tw(object):
             self.d["tweet"]["stat"] = self.statistic(status.text)
 
             for q in query:
-                val  = [value for key, value in self.d["tweet"].items() if q in key ]
-                d[q] = val
+                for key, value in self.d["tweet"].items():
+                    if q in key:
+                        d[q] = value
+                #val  = [value for key, value in self.d["tweet"].items() if q in key ]
             l.append(d)
         return l
 
     def statistic(self,text):
+        """ Return a Counter for ascii lowercase and digitis
+        
+        Keyword arguments:
+           text -- tweet string
+        """
         text = text.split()
         for s in list(text):
             if re.match('@.*',s):
@@ -150,8 +157,6 @@ class Tw(object):
             for letters in set(words):
                 if not re.match("\W+",letters):
                     counts[letters]+=1
-
-        counts = sorted(counts.items(),key = operator.itemgetter(1),reverse = True)
         return counts
                 
     def search(self):
@@ -163,15 +168,13 @@ class Tw(object):
                                lang="en").items():
             print(tweet.text)
 
-
-#
-    def meta(self, sentence):
+    def meta(self, text):
         """
         extracting list of hashtag, at and url
         """
         h_list, a_list, u_list = [], [], []
          
-        for s in list(sentence):
+        for s in list(text):
             if re.match('#.*', s):
                 h_list.append(s)
             elif re.match('@.*', s):
@@ -180,16 +183,39 @@ class Tw(object):
                 u_list.append(s)
         return (h_list, a_list, u_list)
 
+def print_result(result):
+    
+    r = result
+    i = string.ascii_lowercase + string.digits
+    cnt = Counter()
+    
+    for l in r:
+        cnt += l["stat"]
+    print(cnt)
+            
+    for k,v in cnt.items():
+        if k in i:
+            print("{}: {}".format(k,v))
+        else:
+            print("{}: {}".format(k,0))
+#    for i in index:
+#        for l in r:
+#            for k,v in l["stat"].items():
+#                if k is i:
+#                    print("{}: {}".format(i,v))
 
 if __name__ == '__main__':
 
-    companies = [ "Total", "Chevron", "Shell", "BP_America","exxonmobil" ]
-   # companies = [ "Total" ]
+    #companies = [ "Total", "Chevron", "Shell", "BP_America","exxonmobil" ]
+    companies = [ "Total" ]
     nb_last_tw = 30
+    q = ["created_at","stat"]
+
     for company in companies:
         c = Tw(name=company)
         #c.print_info_account(query="description")
-        d = c.get_info_tweet(count = 2, query=["created_at","stat"])
-        print(d)
+        d = c.get_info_tweet(count = 2, query = q)
+        print_result(d)
 
-        print("---------------")
+#
+#        print("---------------")
