@@ -88,7 +88,7 @@ class Tw(object):
            query -- info to retrieve
         """
         if query in Tw.account_info:
-            return self.d[query]
+            return query,self.d[query],
         else:
             print("Cannot print info: query = " + query)
             print("list of queries:")
@@ -145,6 +145,8 @@ class Tw(object):
                 text.remove(s)
             elif  s == 'cc':
                 text.remove(s)
+            elif  s == 'RT':
+                text.remove(s)
 
         text_norm = [''.join(c for c in s if c not in string.punctuation) for s in text]
         #remove blank in array
@@ -183,39 +185,3 @@ class Tw(object):
                 u_list.append(s)
         return (h_list, a_list, u_list)
 
-def print_result(result):
-    
-    r = result
-    i = string.ascii_lowercase + string.digits
-    cnt = Counter()
-    
-    for l in r:
-        cnt += l["stat"]
-    print(cnt)
-            
-    for k,v in cnt.items():
-        if k in i:
-            print("{}: {}".format(k,v))
-        else:
-            print("{}: {}".format(k,0))
-#    for i in index:
-#        for l in r:
-#            for k,v in l["stat"].items():
-#                if k is i:
-#                    print("{}: {}".format(i,v))
-
-if __name__ == '__main__':
-
-    #companies = [ "Total", "Chevron", "Shell", "BP_America","exxonmobil" ]
-    companies = [ "Total" ]
-    nb_last_tw = 30
-    q = ["created_at","stat"]
-
-    for company in companies:
-        c = Tw(name=company)
-        #c.print_info_account(query="description")
-        d = c.get_info_tweet(count = 2, query = q)
-        print_result(d)
-
-#
-#        print("---------------")
