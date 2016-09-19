@@ -88,7 +88,7 @@ class Tw(object):
            query -- info to retrieve
         """
         if query in Tw.account_info:
-            return query,self.d[query],
+            return self.d[query]
         else:
             print("Cannot print info: query = " + query)
             print("list of queries:")
